@@ -18,8 +18,15 @@ let scanCount = 0;
 let canvas = null;
 let context = null;
 
+let autoScanning = false;
+let scanningBusy = false;
+let cameraSession = 0;
+let scanTimer = null;
+
 // CREATE DETECTION CANVAS
 function createCanvas() {
+    if (canvas) return;
+
     canvas = document.createElement("canvas");
 
     canvas.style.position = "absolute";
@@ -37,149 +44,97 @@ function createCanvas() {
 
 // LOAD AI MODEL
 async function loadAIModel() {
-
     statusText.textContent = "Loading AI model...";
 
     try {
         model = await cocoSsd.load();
 
-        statusText.textContent = "AI System Ready";
+        statusText.textContent = cameraStream
+            ? "AI Ready - Live Scanning"
+            : "AI System Ready";
 
-        console.log("SEEDY AI model loaded successfully!");
+        console.log("SEEDY AI loaded successfully!");
+
+        if (cameraStream) {
+            startAutomaticScanning();
+        }
 
     } catch (error) {
-
         statusText.textContent = "AI Loading Failed";
-
-        console.error("AI model error:", error);
+        console.error(error);
     }
 }
 
-// START CAMERA
-startBtn.addEventListener("click", async () => {
+// START AUTOMATIC SCANNING
+function startAutomaticScanning() {
+    if (!cameraStream || !model || autoScanning) return;
 
-    try {
+    autoScanning = true;
 
-        if (!navigator.mediaDevices?.getUserMedia) {
-            throw new Error("Camera requires HTTPS or localhost.");
-        }
+    statusText.textContent = "Live AI Scanning";
 
-        try {
-            cameraStream = await navigator.mediaDevices.getUserMedia({
-                video: { facingMode: "environment" },
-                audio: false
-            });
+    runAutomaticDetection();
+}
 
-        } catch (firstError) {
+// AUTOMATIC DETECTION LOOP
+async function runAutomaticDetection() {
 
-            cameraStream = await navigator.mediaDevices.getUserMedia({
-                video: true,
-                audio: false
-            });
-        }
+    if (!autoScanning || !cameraStream) return;
 
-        video.srcObject = cameraStream;
+    const session = cameraSession;
 
-        await video.play();
+    if (!scanningBusy && video.readyState >= 2) {
 
-        video.style.display = "block";
-        placeholder.style.display = "none";
-
-        if (!canvas) {
-            createCanvas();
-        }
-
-        statusText.textContent = model
-            ? "Camera Active"
-            : "Camera Active - Loading AI";
-
-        objectText.textContent = "Ready to scan";
-        confidenceText.textContent = "0%";
-
-    } catch (error) {
-
-        statusText.textContent = "Camera Error";
-
-        alert("Unable to access camera. Check your camera permission.");
-
-        console.error(error);
-    }
-});
-
-// STOP CAMERA
-stopBtn.addEventListener("click", () => {
-
-    if (cameraStream) {
-
-        cameraStream.getTracks().forEach(track => {
-            track.stop();
-        });
-
-        cameraStream = null;
+        await detectObjects(session, false);
     }
 
-    video.srcObject = null;
-    video.style.display = "none";
-
-    placeholder.style.display = "block";
-
-    if (context && canvas) {
-        context.clearRect(0, 0, canvas.width, canvas.height);
+    if (autoScanning && session === cameraSession) {
+        scanTimer = setTimeout(runAutomaticDetection, 300);
     }
+}
 
-    statusText.textContent = "Camera Stopped";
-    objectText.textContent = "None";
-    confidenceText.textContent = "0%";
-});
+// DETECT OBJECTS
+async function detectObjects(session, manual) {
 
-// SCAN OBJECTS
-scanBtn.addEventListener("click", async () => {
+    if (!model || !cameraStream || scanningBusy) return;
 
-    if (!cameraStream) {
-        alert("Please start your camera first.");
-        return;
-    }
-
-    if (!model) {
-        alert("AI model is still loading. Please wait.");
-        return;
-    }
-
-    if (video.readyState < 2) {
-        alert("Camera is not ready yet.");
-        return;
-    }
-
-    statusText.textContent = "Scanning...";
+    scanningBusy = true;
 
     try {
 
         const predictions = await model.detect(video);
 
+        if (session !== cameraSession || !cameraStream) return;
+
         scanCount++;
 
         scanCountText.textContent = scanCount;
 
-        context.clearRect(0, 0, canvas.width, canvas.height);
-
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
+
+        context.clearRect(0, 0, canvas.width, canvas.height);
 
         if (predictions.length === 0) {
 
             objectText.textContent = "Nothing detected";
             confidenceText.textContent = "0%";
-            statusText.textContent = "Scan Complete";
+
+            if (manual) {
+                statusText.textContent = "Scan Complete";
+            } else {
+                statusText.textContent = "Searching for objects...";
+            }
 
             return;
         }
 
-        // DISPLAY ALL DETECTED OBJECTS
-        const detectedNames = predictions.map(item => {
-            return item.class;
-        });
+        // GET DETECTED OBJECT NAMES
+        const detectedNames = [
+            ...new Set(predictions.map(item => item.class))
+        ];
 
-        objectText.textContent = [...new Set(detectedNames)].join(", ");
+        objectText.textContent = detectedNames.join(", ");
 
         // HIGHEST CONFIDENCE
         const highest = predictions.reduce((a, b) =>
@@ -229,16 +184,126 @@ scanBtn.addEventListener("click", async () => {
 
         });
 
-        console.log("AI Detection Results:", predictions);
+        console.log("SEEDY AI:", predictions);
 
     } catch (error) {
 
+        console.error("Detection error:", error);
+
         statusText.textContent = "Detection Error";
+
+    } finally {
+
+        scanningBusy = false;
+    }
+}
+
+// START CAMERA
+startBtn.addEventListener("click", async () => {
+
+    if (cameraStream) return;
+
+    try {
+
+        try {
+            cameraStream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: "environment" },
+                audio: false
+            });
+
+        } catch (error) {
+
+            cameraStream = await navigator.mediaDevices.getUserMedia({
+                video: true,
+                audio: false
+            });
+        }
+
+        cameraSession++;
+
+        video.srcObject = cameraStream;
+
+        await video.play();
+
+        video.style.display = "block";
+        placeholder.style.display = "none";
+
+        createCanvas();
+
+        statusText.textContent = "Camera Active";
+
+        objectText.textContent = "Searching...";
+        confidenceText.textContent = "0%";
+
+        if (model) {
+            startAutomaticScanning();
+        } else {
+            statusText.textContent = "Waiting for AI model...";
+        }
+
+    } catch (error) {
+
+        statusText.textContent = "Camera Error";
+
+        alert("Unable to access camera. Check camera permissions.");
 
         console.error(error);
     }
+});
+
+// MANUAL SCAN BUTTON
+scanBtn.addEventListener("click", async () => {
+
+    if (!cameraStream) {
+        alert("Please start the camera first.");
+        return;
+    }
+
+    if (!model) {
+        alert("Please wait for the AI model to load.");
+        return;
+    }
+
+    if (scanningBusy) return;
+
+    await detectObjects(cameraSession, true);
 
 });
 
-// LOAD MODEL WHEN PAGE OPENS
+// STOP CAMERA
+stopBtn.addEventListener("click", () => {
+
+    autoScanning = false;
+
+    cameraSession++;
+
+    clearTimeout(scanTimer);
+
+    if (cameraStream) {
+
+        cameraStream.getTracks().forEach(track => {
+            track.stop();
+        });
+
+        cameraStream = null;
+    }
+
+    video.srcObject = null;
+    video.style.display = "none";
+
+    placeholder.style.display = "block";
+
+    if (context && canvas) {
+        context.clearRect(0, 0, canvas.width, canvas.height);
+    }
+
+    statusText.textContent = "Camera Stopped";
+    objectText.textContent = "None";
+    confidenceText.textContent = "0%";
+
+});
+
+// INITIALIZE
+statusText.textContent = "Loading AI model...";
+
 loadAIModel();
