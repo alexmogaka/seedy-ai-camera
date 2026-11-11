@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Seedy AI Vision</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="topbar">
+    <div class="logo">SEEDY<span> AI</span></div>
+    <div class="system-status">
+        <span class="live-dot"></span> AI SYSTEM READY
+    </div>
+</header>
+
+<main class="container">
+
+    <section class="hero">
+        <p class="subtitle">NEXT GENERATION INTELLIGENCE</p>
+        <h1>SEEDY <span>AI VISION</span></h1>
+        <p>See the world through artificial intelligence.</p>
+    </section>
+
+    <section class="scanner-layout">
+
+        <div class="camera-panel">
+            <div class="panel-heading">
+                <h2>LIVE SCANNER</h2>
+                <span class="camera-label">CAMERA INPUT</span>
+            </div>
+
+            <div class="camera-screen">
+                <video id="video" autoplay playsinline muted></video>
+
+                <div class="scanner-line"></div>
+
+                <div class="camera-placeholder" id="placeholder">
+                    <div class="camera-icon">◉</div>
+                    <h3>AI CAMERA STANDBY</h3>
+                    <p>Activate your camera to begin scanning</p>
+                </div>
+
+                <div class="corner top-left"></div>
+                <div class="corner top-right"></div>
+                <div class="corner bottom-left"></div>
+                <div class="corner bottom-right"></div>
+
+                <div class="screen-label">SEEDY VISION / LIVE FEED</div>
+            </div>
+
+            <div class="camera-controls">
+                <button id="startBtn">▶ START CAMERA</button>
+                <button id="scanBtn">◎ SCAN OBJECT</button>
+                <button id="stopBtn">■ STOP CAMERA</button>
+            </div>
+        </div>
+
+        <aside class="results-panel">
+            <h2>AI DETECTION</h2>
+            <p class="panel-description">Intelligence analysis results</p>
+
+            <div class="result-card">
+                <span>DETECTION STATUS</span>
+                <h3 id="status">Waiting...</h3>
+            </div>
+
+            <div class="result-card">
+                <span>OBJECT DETECTED</span>
+                <h3 id="object">None</h3>
+            </div>
+
+            <div class="result-card">
+                <span>CONFIDENCE</span>
+                <h3 id="confidence">0%</h3>
+            </div>
+
+            <div class="result-card">
+                <span>SCAN COUNT</span>
+                <h3 id="scanCount">0</h3>
+            </div>
+        </aside>
+
+    </section>
+
+    <section class="features">
+        <div class="feature-card">
+            <span>◉</span>
+            <h3>Human Detection</h3>
+            <p>Identify people through the camera.</p>
+        </div>
+
+        <div class="feature-card">
+            <span>◇</span>
+            <h3>Object Recognition</h3>
+            <p>Recognize objects in your surroundings.</p>
+        </div>
+
+        <div class="feature-card">
+            <span>⌁</span>
+            <h3>AI Intelligence</h3>
+            <p>Analyze visual information in real time.</p>
+        </div>
+    </section>
+
+</main>
+
+<footer>
+    SEEDY AI VISION © 2026 | POWERED BY ARTIFICIAL INTELLIGENCE
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
+
+<script src="script.js"></script>
+</body>
+</html>
